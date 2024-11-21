@@ -1,0 +1,209 @@
+---
+title: "Estimation of Respondents in Each State"
+author: "Wen Han Zhao, Yun Chu, Felix Li, Yanzun Jiang"
+date: today
+date-format: long
+thanks: "Code and data are available at: [https://github.com/chuyun2024/Estimation-of-Doctors/tree/main]"
+format: pdf
+number-sections: true
+toc: true
+bibliography: references.bib
+---
+
+\newpage
+
+# Introduction{#sec-intro}
+
+The American Community Survey (ACS) conducted by the U.S. Census Bureau provides vital demographic, social, economic, and housing data that supports informed decision-making across various sectors. Using the 2022 ACS dataset accessed through IPUMS, this report delves into state-level variations in educational attainment, with a specific focus on respondents holding doctoral degrees. By analyzing these patterns, we aim to shed light on the distribution of advanced educational qualifications across the United States.
+
+To complement the analysis, a ratio estimator method is applied, leveraging the known respondent total for California to estimate total respondents across other states. This approach not only facilitates comparisons but also provides insights into the broader demographic landscape, enriching our understanding of educational trends and their implications.
+
+This report begins by outlining the methodology used for data extraction and analysis, followed by detailed findings on the prevalence of doctoral degrees across states. The discussion highlights key observations, potential limitations, and the broader significance of these trends for policymaking and resource allocation.
+
+This report uses the IPUMS data [@ipums_acs_2022] and it uses the libraries tidyverse [@tidyverse] and knitr [@knitr] on R [@citeR] codes. @sec-overview contains the overview of the Ratio Estimators Approach. @sec-summary contains all the summary table of estimated and actual respondents by state. @sec-explanation contains the a brief explanation of the differences appeared due to methodology used. Lastly, @sec-appendix contains information to gather data. 
+
+# Overview of the Ratio Estimators Approach {#sec-overview}
+
+## Estimation Formula and Explanation
+
+1. Let:
+   
+   -$R_{CA}$ be the ratio of the number of people with doctoral degrees to total respondents in CA.
+   
+   -$N_{doctoral \space degrees, state}$ be the number people with of doctoral degrees in any other state.
+   
+   -$N_{respondents, state}$ be the estimated number of respondents in other states.
+
+2. Application to Other States: For any other state, the estimated number of total respondents can be expressed as:
+  
+   $N_{respondents, state}$ = $\frac{N_{doctoral \space degrees, state}}{R_{CA}}$
+  
+   This uses the ratio observed in California to estimate the total number of respondents based on the number of doctoral degrees in other states.
+    
+This approach leverages the assumption that the proportion of doctoral degree holders within the survey population is relatively consistent across states, allowing us to use California as a reference point for estimation. While this simplifies the calculation and provides a practical means of estimating total respondents, it is important to recognize that state-specific factors, such as varying levels of educational attainment, population density, and demographic composition, may cause deviations from this assumed uniformity. Despite these potential limitations, this method is a useful starting point for approximating total respondent numbers in the absence of complete data for all states.
+
+
+# Summary Table of Estimated and Actual Respondents {#sec-summary}
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+# Workspace setup
+library(tidyverse)
+library(knitr)
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+
+# Read data from the data file from IPUMS
+data <- read_csv("raw_data.csv")
+```
+
+```{r}
+#| label: tbl-data
+#| tbl-cap: Estimated and Actual Respondents
+#| echo: false
+#| warning: false
+#| message: false
+
+state_code = c(
+  "Connecticut" = "01",
+  "Maine" = "02",
+  "Massachusetts" = "03",
+  "New Hampshire" = "04",
+  "Rhode Island" = "05",
+  "Vermont" = "06",
+  "Delaware" = "11",
+  "New Jersey" = "12",
+  "New York" = "13",
+  "Pennsylvania" = "14",
+  "Illinois" = "21",
+  "Indiana" = "22",
+  "Michigan" = "23",
+  "Ohio" = "24",
+  "Wisconsin" = "25",
+  "Iowa" = "31",
+  "Kansas" = "32",
+  "Minnesota" = "33",
+  "Missouri" = "34",
+  "Nebraska" = "35",
+  "North Dakota" = "36",
+  "South Dakota" = "37",
+  "Virginia" = "40",
+  "Alabama" = "41",
+  "Arkansas" = "42",
+  "Florida" = "43",
+  "Georgia" = "44",
+  "Louisiana" = "45",
+  "Mississippi" = "46",
+  "North Carolina" = "47",
+  "South Carolina" = "48",
+  "Texas" = "49",
+  "Kentucky" = "51",
+  "Maryland" = "52",
+  "Oklahoma" = "53",
+  "Tennessee" = "54",
+  "West Virginia" = "56",
+  "Arizona" = "61",
+  "Colorado" = "62",
+  "Idaho" = "63",
+  "Montana" = "64",
+  "Nevada" = "65",
+  "New Mexico" = "66",
+  "Utah" = "67",
+  "Wyoming" = "68",
+  "California" = "71",
+  "Oregon" = "72",
+  "Washington" = "73",
+  "Alaska" = "81",
+  "Hawaii" = "82",
+  "Puerto Rico" = "83",
+  "State groupings (1980 Urban/rural sample)" = "96",
+  "Military/Mil. Reservations" = "97",
+  "District of Columbia" = "98",
+  "State not identified" = "99"
+)
+
+# Count the number of respondents in each state
+respondent <- data |>
+  group_by(STATEICP) |>
+  summarise(n = n())
+
+# Count the number of doctors in each state
+doctor <- data |>
+  filter(EDUCD == 116) |>
+  group_by(STATEICP) |>
+  summarise(n = n())
+
+# Record number of respondents in CA
+respondent_ca <- respondent |>
+  filter(STATEICP == 71) |>
+  pull(n)
+
+# Record number of doctors in CA
+doctor_ca <- doctor |>
+  filter(STATEICP == 71) |>
+  pull(n)
+
+# Create the table of estimated and actual respondents
+estimates <- doctor |>
+  mutate(
+    estimated = round(respondent_ca * as.numeric(n) / doctor_ca),
+    actual = respondent$n,
+    diff = actual - estimated) |>
+  rename(state_id = STATEICP) |>
+  mutate(state_id = recode(
+    state_id, !!!setNames(names(state_code), state_code))) |>
+  select(-n)
+
+kable(estimates, format = "markdown")
+```
+
+# Explanation of Differences {#sec-explanation}
+
+If we estimate the total number of respondents using the ratio estimator approach with Laplace’s method, we are assuming that the proportion of people with doctoral degrees is the same across all states. However, this is not necessarily the case. California, with its many large universities and research institutions, likely has a higher concentration of individuals with doctoral degrees. As a result, the doctor-to-respondent ratio in California would be higher than in other states, leading to an underestimate of the total number of respondents in those states.
+
+\newpage
+
+\appendix
+
+# Appendix {#sec-appendix}
+
+## Instructions on Obtaining the Data 
+
+
+1. **Go to the IPUMS website** and click on "VISIT SITE" under the IPUMS USA section.
+
+2. Click on **"Get Data"**.
+
+3. Click **"Select Samples"**, uncheck **"Default sample from each year"**, and check only **"ACS"** for the year 2022.
+
+4. Click **"Submit Sample Selections"**.
+
+5. Under **HOUSEHOLD**, hover over **"GEOGRAPHIC"** and add **"STATEICP"** to your cart.
+
+6. Under **PERSON**, hover over **"DEMOGRAPHIC"** and add **"SEX"** to your cart.
+
+7. Under **PERSON**, hover over **"EDUCATION"** and add **"EDUC"** to your cart.
+
+8. In your **Data Cart**, you should now see 4 variables and 1 sample. Click **"View Cart"**.
+
+9. Click **"Create Data Extract"**.
+
+10. Change the **Data Format** from `.dat` to `.csv` and click **"Apply Selections"**.
+
+11. Click **"Submit Extract"**.
+
+12. Wait for the status to become **COMPLETED**, then click **"Download .csv"** under the "Download Data" column.
+
+13. Finally, unzip the downloaded file to access your data.
+
+\newpage
+
+# References {#sec-reference}
+
