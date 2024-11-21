@@ -2,4 +2,4 @@
 
 ## Overview
 
-This repo contains the files used to estimate respondents in each state using ratio estimators approach of Laplace and compare the esimated number of respondents with the actual number respectively.
+The American Community Survey (ACS) conducted by the U.S. Census Bureau provides vital demographic, social, economic, and housing data that supports informed decision-making across various sectors. Using the 2022 ACS dataset accessed through IPUMS, this report delves into state-level variations in educational attainment, with a specific focus on respondents holding doctoral degrees. By analyzing these patterns, we aim to shed light on the distribution of advanced educational qualifications across the United States.
